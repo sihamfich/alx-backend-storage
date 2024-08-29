@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
-A module that provides a caching mechanism using Redis, with method call counting.
+A module that provides a caching mechanism using Redis,
+with method call counting.
 """
 import redis
 import uuid
@@ -15,7 +16,8 @@ def count_calls(method: Callable) -> Callable:
     @functools.wraps(method)
     def wrapper(self, *args, **kwargs):
         """
-        Wrapper function to increment the call count and call the original method.
+        Wrapper function to increment the call count and call the
+        original method.
         """
         # Get the qualified name of the method
         key = method.__qualname__
@@ -23,14 +25,15 @@ def count_calls(method: Callable) -> Callable:
         self._redis.incr(key)
         # Call the original method and return its result
         return method(self, *args, **kwargs)
-    
+
     return wrapper
 
 
 class Cache:
     def __init__(self, host: str = 'localhost', port: int = 6379, db: int = 0):
         """
-        Initialize the Cache instance, set up the Redis client, and flush the database.
+        Initialize the Cache instance, set up the Redis client,
+        and flush the database.
         """
         self._redis = redis.Redis(host=host, port=port, db=db)
         self._redis.flushdb()
@@ -38,15 +41,19 @@ class Cache:
     @count_calls
     def store(self, data: Union[str, bytes, int, float]) -> str:
         """
-        Store the data in Redis with a randomly generated key and return the key.
+        Store the data in Redis with a randomly generated key
+        and return the key.
         """
         key = str(uuid.uuid4())
         self._redis.set(key, data)
         return key
 
-    def get(self, key: str, fn: Optional[Callable] = None) -> Union[str, bytes, int, float, None]:
+    def get(
+        self, key: str, fn: Optional[Callable] = None
+    ) -> Union[str, bytes, int, float, None]:
         """
-        Retrieve data from Redis and optionally apply a conversion function `fn`.
+        Retrieve data from Redis and optionally apply a
+        conversion function `fn`.
         """
         value = self._redis.get(key)
         if value is None:
