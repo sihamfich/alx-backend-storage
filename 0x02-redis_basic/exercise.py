@@ -30,11 +30,11 @@ def call_history(method: Callable) -> Callable:
     def wrapper(self, *args, **kwargs):
         inputs_key = f"{method.__qualname__}:inputs"
         outputs_key = f"{method.__qualname__}:outputs"
-        
+
         self._redis.rpush(inputs_key, str(args))
         result = method(self, *args, **kwargs)
         self._redis.rpush(outputs_key, result)
-        
+
         return result
 
     return wrapper
@@ -47,12 +47,12 @@ def replay(method: Callable) -> None:
     redis_instance = method.__self__._redis
     inputs_key = f"{method.__qualname__}:inputs"
     outputs_key = f"{method.__qualname__}:outputs"
-    
+
     inputs = redis_instance.lrange(inputs_key, 0, -1)
     outputs = redis_instance.lrange(outputs_key, 0, -1)
-    
+
     print(f"{method.__qualname__} was called {len(inputs)} times:")
-    
+
     for inp, out in zip(inputs, outputs):
         print(f"{method.__qualname__}(*{eval(inp)}) -> {out.decode('utf-8')}")
 
