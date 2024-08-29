@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """
-A module that provides a caching mechanism using Redis.
+A module that provides a caching mechanism using Redis, with method call counting.
 """
 import redis
 import uuid
 from typing import Union, Callable, Optional
 import functools
+
 
 def count_calls(method: Callable) -> Callable:
     """
@@ -22,8 +23,9 @@ def count_calls(method: Callable) -> Callable:
         self._redis.incr(key)
         # Call the original method and return its result
         return method(self, *args, **kwargs)
-
+    
     return wrapper
+
 
 class Cache:
     def __init__(self, host: str = 'localhost', port: int = 6379, db: int = 0):
@@ -33,6 +35,7 @@ class Cache:
         self._redis = redis.Redis(host=host, port=port, db=db)
         self._redis.flushdb()
 
+    @count_calls
     def store(self, data: Union[str, bytes, int, float]) -> str:
         """
         Store the data in Redis with a randomly generated key and return the key.
