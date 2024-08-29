@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 A module that provides a caching mechanism using Redis,
-with method call counting and history tracking.
+with method call counting, history tracking, and replay functionality.
 """
 import redis
 import uuid
@@ -15,10 +15,6 @@ def count_calls(method: Callable) -> Callable:
     """
     @functools.wraps(method)
     def wrapper(self, *args, **kwargs):
-        """
-        Wrapper function to increment the call count and call the
-        original method.
-        """
         key = method.__qualname__
         self._redis.incr(key)
         return method(self, *args, **kwargs)
@@ -32,25 +28,33 @@ def call_history(method: Callable) -> Callable:
     """
     @functools.wraps(method)
     def wrapper(self, *args, **kwargs):
-        """
-        Wrapper function to store the history of inputs and outputs.
-        """
-        # Generate keys for inputs and outputs
         inputs_key = f"{method.__qualname__}:inputs"
         outputs_key = f"{method.__qualname__}:outputs"
         
-        # Store input arguments
         self._redis.rpush(inputs_key, str(args))
-        
-        # Call the original method and get the result
         result = method(self, *args, **kwargs)
-        
-        # Store the result
         self._redis.rpush(outputs_key, result)
         
         return result
 
     return wrapper
+
+
+def replay(method: Callable) -> None:
+    """
+    Display the history of calls for a particular function.
+    """
+    redis_instance = method.__self__._redis
+    inputs_key = f"{method.__qualname__}:inputs"
+    outputs_key = f"{method.__qualname__}:outputs"
+    
+    inputs = redis_instance.lrange(inputs_key, 0, -1)
+    outputs = redis_instance.lrange(outputs_key, 0, -1)
+    
+    print(f"{method.__qualname__} was called {len(inputs)} times:")
+    
+    for inp, out in zip(inputs, outputs):
+        print(f"{method.__qualname__}(*{eval(inp)}) -> {out.decode('utf-8')}")
 
 
 class Cache:
