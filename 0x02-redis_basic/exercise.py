@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 A module that provides a caching mechanism using Redis,
-with method call counting.
+with method call counting and history tracking.
 """
 import redis
 import uuid
@@ -19,12 +19,36 @@ def count_calls(method: Callable) -> Callable:
         Wrapper function to increment the call count and call the
         original method.
         """
-        # Get the qualified name of the method
         key = method.__qualname__
-        # Increment the count in Redis
         self._redis.incr(key)
-        # Call the original method and return its result
         return method(self, *args, **kwargs)
+
+    return wrapper
+
+
+def call_history(method: Callable) -> Callable:
+    """
+    A decorator that stores the history of inputs and outputs of a method.
+    """
+    @functools.wraps(method)
+    def wrapper(self, *args, **kwargs):
+        """
+        Wrapper function to store the history of inputs and outputs.
+        """
+        # Generate keys for inputs and outputs
+        inputs_key = f"{method.__qualname__}:inputs"
+        outputs_key = f"{method.__qualname__}:outputs"
+        
+        # Store input arguments
+        self._redis.rpush(inputs_key, str(args))
+        
+        # Call the original method and get the result
+        result = method(self, *args, **kwargs)
+        
+        # Store the result
+        self._redis.rpush(outputs_key, result)
+        
+        return result
 
     return wrapper
 
@@ -39,6 +63,7 @@ class Cache:
         self._redis.flushdb()
 
     @count_calls
+    @call_history
     def store(self, data: Union[str, bytes, int, float]) -> str:
         """
         Store the data in Redis with a randomly generated key
