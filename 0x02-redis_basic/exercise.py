@@ -73,3 +73,4 @@ class Cache:
         Retrieve an integer value from Redis.
         """
         return self.get(key, lambda d: int(d))
+
